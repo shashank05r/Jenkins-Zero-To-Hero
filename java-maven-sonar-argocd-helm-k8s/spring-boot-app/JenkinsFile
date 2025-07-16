@@ -21,7 +21,7 @@ pipeline {
 
         stage('Pre-clean') {
             steps {
-                sh 'rm -rf java-maven-sonar-argocd-helm-k8s/spring-boot-app/target'
+            sh 'sudo rm -rf java-maven-sonar-argocd-helm-k8s/spring-boot-app/target'
             }
         }
 
