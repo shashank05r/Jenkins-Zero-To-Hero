@@ -1,10 +1,10 @@
 pipeline {
-  agent {
-    docker {
-      image 'abhishekf5/maven-abhishek-docker-agent:v1'
-      args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
-    }
-  }
+ agent {
+  docker {
+    image 'maven:3.9.6-eclipse-temurin-17'  // or a custom image with Java 17
+    args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
+      }
+   }
   stages {
     stage('Checkout') {
       steps {
@@ -19,11 +19,6 @@ pipeline {
         sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn clean package'
       }
     }
-     stage('Check Java Version') {
-        steps {
-            sh 'java -version'
-          }
-      }
     stage('Static Code Analysis') {
       environment {
         SONAR_URL = "http://35.183.128.172:9000"
