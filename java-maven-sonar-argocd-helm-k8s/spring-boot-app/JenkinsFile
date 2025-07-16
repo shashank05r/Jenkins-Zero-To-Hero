@@ -18,9 +18,9 @@ pipeline {
         }
         stage('Checkout') {
             steps {
-                // Uncomment when ready to use the actual repo
+                 sh 'echo "Checkout passed"'
                 // git branch: 'main', url: 'https://github.com/iam-veeramalla/Jenkins-Zero-To-Hero.git'
-                sh 'echo "Checkout passed"'
+              
             }
         }
         stage('Build and Test') {
