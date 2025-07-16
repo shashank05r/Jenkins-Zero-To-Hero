@@ -1,7 +1,7 @@
 pipeline {
     agent {
         docker {
-            image 'abhishekf5/maven-abhishek-docker-agent:v1'
+            image 'ghcr.io/carlosedp/java17-maven-docker:latest'
             args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
@@ -26,8 +26,10 @@ pipeline {
         stage('Build and Test') {
             steps {
                 sh 'ls -ltr'
-                // Cache Maven dependencies to speed up builds
-                sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn clean package --batch-mode'
+                sh '''
+                    cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+                    mvn clean package --batch-mode
+                '''
             }
         }
         stage('Static Code Analysis') {
@@ -50,8 +52,11 @@ pipeline {
             }
             steps {
                 script {
-                    sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && docker build -t ${DOCKER_IMAGE} .'
-                    def dockerImage = docker.image("${DOCKER_IMAGE}")
+                    sh """
+                        cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+                        docker build -t ${env.DOCKER_IMAGE} .
+                    """
+                    def dockerImage = docker.image("${env.DOCKER_IMAGE}")
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-cred') {
                         dockerImage.push()
                     }
@@ -65,21 +70,21 @@ pipeline {
             }
             steps {
                 withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
-                    sh '''
+                    sh """
                         git config user.email "abhishek.xyz@gmail.com"
                         git config user.name "Abhishek Veeramalla"
                         sed -i "s|replaceImageTag|${BUILD_NUMBER}|g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
                         git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
                         git commit -m "Update deployment image to version ${BUILD_NUMBER}" || echo "No changes to commit"
                         git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
-                    '''
+                    """
                 }
             }
         }
     }
     post {
         always {
-            cleanWs() // Clean workspace after build
+            cleanWs()
         }
         failure {
             echo 'Pipeline failed. Check logs for details.'
