@@ -16,7 +16,7 @@ pipeline {
             steps {
                 sh 'echo "Checkout passed"'
             }
-        }
+        
 
          stage('Pre-clean') {
           steps {
