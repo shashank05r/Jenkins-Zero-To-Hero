@@ -76,7 +76,7 @@ stage('Update Deployment File') {
         git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
 
         echo "Committing changes"
-        git commit -m "Update deployment image to version ${BUILD_NUMBER}"
+        git diff --cached --quiet || git commit -m "Update deployment image to version ${BUILD_NUMBER}"
 
         echo "Pushing to repo"
         git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git HEAD:main
