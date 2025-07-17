@@ -5,6 +5,14 @@ pipeline {
       args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
     }
   }
+
+  environment {
+    SONAR_URL = "http://35.183.128.172:9000/"
+    DOCKER_IMAGE = "shashankp05/ultimate-cicd:${BUILD_NUMBER}"
+    GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
+    GIT_USER_NAME = "shashank05r"
+  }
+
   stages {
     stage('Checkout') {
       steps {
@@ -13,12 +21,7 @@ pipeline {
         }
       }
     }
- environment {
-    SONAR_URL = "http://35.183.128.172:9000/"
-    DOCKER_IMAGE = "shashankp05/ultimate-cicd:${BUILD_NUMBER}"
-    GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
-    GIT_USER_NAME = "shashank05r"
-  }
+
     stage('Build and Test') {
       steps {
         sh '''
@@ -27,6 +30,7 @@ pipeline {
         '''
       }
     }
+
     stage('Static Code Analysis') {
       steps {
         withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
@@ -37,6 +41,7 @@ pipeline {
         }
       }
     }
+
     stage('Build and Push Docker Image') {
       steps {
         script {
@@ -51,24 +56,47 @@ pipeline {
         }
       }
     }
-   stage('Update Deployment File') {
-        environment {
-            GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
-            GIT_USER_NAME = "iam-veeramalla"
+
+    stage('Update Deployment File') {
+      steps {
+        dir('java-maven-sonar-argocd-helm-k8s') {
+          withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+            sh '''
+              echo "📍 Checking for Git repository..."
+              ls -a
+              pwd
+
+              if [ ! -d ".git" ]; then
+                echo "❌ Git repository not found. Aborting."
+                exit 1
+              fi
+
+              git config user.email "p.shashank05r@gmail.com"
+              git config user.name "shashank05r"
+
+              sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" spring-boot-app-manifests/deployment.yml
+
+              if ! git diff --quiet spring-boot-app-manifests/deployment.yml; then
+                echo "✅ Committing updated deployment file..."
+                git add spring-boot-app-manifests/deployment.yml
+                git commit -m "Update deployment image to version ${BUILD_NUMBER}"
+                git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git HEAD:main
+              else
+                echo "🚫 No changes detected. Skipping commit."
+              fi
+            '''
+          }
         }
-        steps {
-            withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
-                sh '''
-                    git config user.email "abhishek.xyz@gmail.com"
-                    git config user.name "Abhishek Veeramalla"
-                    BUILD_NUMBER=${BUILD_NUMBER}
-                    sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-                    git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-                    git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
-                '''
-            }
-        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "✅ Pipeline completed successfully!"
+    }
+    failure {
+      echo "❌ Pipeline failed. Please check logs above."
     }
   }
 }
