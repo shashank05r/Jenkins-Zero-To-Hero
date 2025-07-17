@@ -2,27 +2,26 @@ pipeline {
   agent {
     docker {
       image 'shashankp05/shashank'
-      args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket
+      args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
     }
   }
+
   environment {
-    // Global environment if needed
     GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
     GIT_USER_NAME = "shashank05r"
+    DOCKER_IMAGE = "shashankp05/ultimate-cicd:${BUILD_NUMBER}"
   }
+
   stages {
     stage('Checkout') {
       steps {
-        sh 'echo passed'
-        // You may uncomment below if using actual checkout
-        // git branch: 'main', url: 'https://github.com/iam-veeramalla/Jenkins-Zero-To-Hero.git'
+        echo 'Skipping Git checkout (handled manually in update stage)'
       }
     }
 
     stage('Build and Test') {
       steps {
         sh '''
-          ls -ltr
           cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
           mvn clean package
         '''
@@ -44,40 +43,38 @@ pipeline {
     }
 
     stage('Build and Push Docker Image') {
-      environment {
-        DOCKER_IMAGE = "shashankp05/ultimate-cicd:${BUILD_NUMBER}"
-      }
       steps {
         withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-          script {
-            sh '''
-              cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
-              docker build -t ${DOCKER_IMAGE} .
-              echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-              docker push ${DOCKER_IMAGE}
-            '''
-          }
+          sh '''
+            cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+            docker build -t $DOCKER_IMAGE .
+            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+            docker push $DOCKER_IMAGE
+          '''
         }
       }
     }
 
-    stage('Update Deployment File') {
+    stage('Update Deployment File in Git') {
       steps {
         withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
           sh '''
+            set -e
+            echo "Cloning repo..."
+            rm -rf $GIT_REPO_NAME
+            git clone https://$GITHUB_TOKEN@github.com/$GIT_USER_NAME/$GIT_REPO_NAME.git
+            cd $GIT_REPO_NAME
+
             echo "Configuring Git"
             git config user.email "p.shashank05r@gmail.com"
             git config user.name "shashank05r"
-            set -e
-            echo "Cloning repo..."
-            rm -rf ${GIT_REPO_NAME}
-            git clone https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git
-            cd ${GIT_REPO_NAME}
- BUILD_NUMBER=${BUILD_NUMBER}
-                    sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-                    git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-                    git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+
+            echo "Updating deployment image tag"
+            sed -i "s/replaceImageTag/$BUILD_NUMBER/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+
+            git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+            git commit -m "Update deployment image to version $BUILD_NUMBER" || echo "No changes to commit"
+            git push https://$GITHUB_TOKEN@github.com/$GIT_USER_NAME/$GIT_REPO_NAME.git HEAD:main
           '''
         }
       }
