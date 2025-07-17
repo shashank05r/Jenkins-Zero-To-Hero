@@ -20,7 +20,6 @@ pipeline {
     stage('Build and Test') {
       steps {
         sh '''
-          ls -ltr
           cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
           mvn clean package
         '''
@@ -50,22 +49,23 @@ pipeline {
         }
       }
     }
-   stage('Update Deployment File') {
-  steps {
-    dir('java-maven-sonar-argocd-helm-k8s') {
-      withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
-        sh '''
-          git config user.email "p.shashank05r@gmail.com"
-          git config user.name "shashank05r"
-         sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" spring-boot-app-manifests/deployment.yml
-          git add spring-boot-app-manifests/deployment.yml
-          git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-          git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
-        '''
+    stage('Update Deployment File') {
+      steps {
+        dir('java-maven-sonar-argocd-helm-k8s') {
+          withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+            sh '''
+              git config user.email "p.shashank05r@gmail.com"
+              git config user.name "shashank05r"
+              sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" spring-boot-app-manifests/deployment.yml
+              git add spring-boot-app-manifests/deployment.yml
+              git commit -m "Update deployment image to version ${BUILD_NUMBER}"
+              git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+            '''
+          }
+        }
       }
     }
   }
-}
   post {
     success {
       echo "✅ Pipeline completed successfully!"
