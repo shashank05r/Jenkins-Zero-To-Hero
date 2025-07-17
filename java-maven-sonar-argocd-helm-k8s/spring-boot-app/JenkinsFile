@@ -5,15 +5,6 @@ pipeline {
       args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
     }
   }
-
-  environment {
-    SONAR_URL = "http://35.183.128.172:9000"
-    DOCKER_IMAGE = "shashankp05/shashank-cicd-${BUILD_NUMBER}"
-    REGISTRY_CREDENTIALS = credentials('docker-cred')
-    GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
-    GIT_USER_NAME = "iam-veeramalla"
-  }
-
   stages {
     stage('Checkout') {
       steps {
