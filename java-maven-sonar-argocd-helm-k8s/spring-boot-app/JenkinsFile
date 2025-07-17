@@ -46,26 +46,42 @@ pipeline {
       }
     }
 stage('Update Deployment File') {
-    environment {
-        GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
-        GIT_USER_NAME = "shashank05r"
+  environment {
+    GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
+    GIT_USER_NAME = "shashank05r"
+  }
+  steps {
+    withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+      sh '''
+        set -e
+        echo "Cleaning old repo folder"
+        rm -rf ${GIT_REPO_NAME}
+
+        echo "Cloning repo..."
+        git clone https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git
+        cd ${GIT_REPO_NAME}
+
+        echo "Current dir: $(pwd)"
+        echo "Listing files:"
+        ls -la
+
+        echo "Configuring git user"
+        git config user.email "p.shashank05r@gmail.com"
+        git config user.name "shashank05r"
+
+        echo "Replacing image tag with BUILD_NUMBER=${BUILD_NUMBER}"
+        sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+
+        echo "Staging changes"
+        git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+
+        echo "Committing changes"
+        git commit -m "Update deployment image to version ${BUILD_NUMBER}"
+
+        echo "Pushing to repo"
+        git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git HEAD:main
+      '''
     }
-    steps {
-        withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
-            sh '''
-      rm -rf ${GIT_REPO_NAME}
-    git clone https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git
-    cd ${GIT_REPO_NAME}
-
-    git config user.email "p.shashank05r@gmail.com"
-    git config user.name "shashank05r"
-
-    sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-
-    git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-    git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git HEAD:main
-            '''
-        }
-    }
+  }
 }
+
