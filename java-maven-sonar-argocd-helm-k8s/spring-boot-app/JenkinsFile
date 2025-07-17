@@ -74,16 +74,11 @@ pipeline {
             echo "Configuring Git"
             git config user.email "p.shashank05r@gmail.com"
             git config user.name "shashank05r"
-
-            echo "Replacing tag"
-            sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-
-            echo "Staging & committing if changes exist"
-            git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-            git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-
-            echo "Pushing to GitHub"
-            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git HEAD:main
+ BUILD_NUMBER=${BUILD_NUMBER}
+                    sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                    git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                    git commit -m "Update deployment image to version ${BUILD_NUMBER}"
+                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
           '''
         }
       }
